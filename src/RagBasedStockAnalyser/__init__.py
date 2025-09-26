@@ -1,0 +1,1 @@
+# RagBasedStockAnalyser package initializer
