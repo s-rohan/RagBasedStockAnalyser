@@ -1,6 +1,6 @@
-# FineTuningChunkingStrategy
+# RagBasedStockAnalyser
 
-This is a starter Python project for experimenting with fine-tuning and chunking strategies.
+This python project is to analyse Stocks based on various inpute sources and use  Rag based model to answer and get insights on tickers earning prediction
 
 ## Project Structure
 - `requirements.txt` — Python dependencies
@@ -12,7 +12,7 @@ This is a starter Python project for experimenting with fine-tuning and chunking
 ### Using Conda
 ```sh
 conda env create -f environment.yml
-conda activate fine-tuning-chunking
+conda activate fRagBasedStockAnalyser
 ```
 
 ### Using pip
@@ -20,5 +20,4 @@ conda activate fine-tuning-chunking
 pip install -r requirements.txt
 ```
 
----
-Replace this README with project-specific details as you develop your solution.
+
