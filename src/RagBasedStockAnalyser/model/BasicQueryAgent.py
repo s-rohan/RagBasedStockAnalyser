@@ -15,9 +15,9 @@ from BaseRedisMemoryAgent import BaseRedisMemoryAgent
 load_dotenv()
 
 class BasicQueryAgent(BaseRedisMemoryAgent):
-    def __init__(self,systemPrompt:str):
+    def __init__(self,systemPrompt:str,**kwargs):
         # Load config from environment variables
-        super().__init__()
+        super().__init__(**kwargs)
         
         self.human_template = f"{{query}}"
         self.system_template = systemPrompt

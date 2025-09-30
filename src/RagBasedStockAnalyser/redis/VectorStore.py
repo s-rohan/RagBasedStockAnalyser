@@ -9,6 +9,7 @@ from pydantic import BaseModel,field_validator
 from typing import Optional
 from dotenv import load_dotenv
 from functools import lru_cache
+import json
 load_dotenv()
 class Document(BaseModel):
     id:str
@@ -68,7 +69,7 @@ class VectorStore:
                     "doc_name": doc.doc_name
                 
                 })
-        self.r.hset(store.id,mapping={"idf_score":store.idf_score})
+        self.r.hset(store.id,mapping=store.idf_score)
     def retriveLexicalData(self, contentKey: str, idfscoreKey: str) -> LexicalDocuments:
         docs: list[LexicalDocument] = []
 

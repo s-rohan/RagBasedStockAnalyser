@@ -46,13 +46,21 @@ class RedisQueryRunner:
         results=[doc for doc in res.docs]
         return results,latency
 
-    def search(self,index, top_k,query_vec,queryStr=None):
+    def search(self,index, top_k,query_vec,queryStr=None,return_fields:Optional[list]=None,getAllFields:bool=False):
             if queryStr is None:
                 queryStr=f"*=>[KNN {top_k} @embedding $vec AS score]"
-            q = Query(queryStr) \
-                .return_fields("content", "doc_name", "chunk_id", "score", "id", "embedding") \
+            if return_fields is None:
+                return_fields=self.getDefaultReturnFields()
+            q = None
+            if getAllFields:
+                q=Query(queryStr) \
                 .sort_by("score", asc=False) \
                 .dialect(2)
+            else:
+                q=Query(queryStr) \
+                    .return_fields(*return_fields) \
+                    .sort_by("score", asc=False) \
+                    .dialect(2)
 
             start = time.time()
             res =  self.store.ft(index).search(q, query_params={"vec": query_vec})
@@ -84,6 +92,9 @@ class RedisQueryRunner:
                 results.append(doc)
 
             return results, latency
+
+    def getDefaultReturnFields(self):
+        return ["content", "doc_name", "chunk_id", "score", "id", "embedding"]
 
     def run_query(self, query_text,query_vec_emb:np.array, top_k=10):
         query_vec = query_vec_emb.astype(np.float32).tobytes()      

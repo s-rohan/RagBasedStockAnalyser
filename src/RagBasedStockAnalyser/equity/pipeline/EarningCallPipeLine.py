@@ -6,7 +6,7 @@ import os,json
 import RagBasedStockAnalyser.equity.storeData.ReadStore as ReadStore
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 class EarningCallPipleLine:
-    def __INIT__(self):
+    def __init__(self):
         self.readStore=ReadStore()
         self.reader = ReadStore.ReadStore()
         logging.info("EarningCallPipleLine initialized.")

@@ -1,6 +1,8 @@
 import unittest
 import os
 import json
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 from RagBasedStockAnalyser.equity.storeData.ReadStore import ReadStore
 
 def dummy_processor(line):

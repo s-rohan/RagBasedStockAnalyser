@@ -32,6 +32,7 @@ class QueryWithIDF:
         doc_matrix = np.array(doc_vectors)
 
         return doc_matrix,feature_names
+   
     def _get_lexical_cosine_scores(self, query: str, docs: list[LexicalDocument],top_k) -> list[dict]:
         logger.info(f"Calculating lexical cosine scores for query: {query} and {len(docs)} docs.")
         """
@@ -54,6 +55,7 @@ class QueryWithIDF:
                 }
             retDocs.append(doc)
         return retDocs
+    
     def fetch_and_lexical(self, query: str, top_k: int = 11) -> list:
         """
         Calls fetch_vector_results, extracts all unique (ticker, year, quater) from doc_name or id using EmbeddingOrganizer patterns,

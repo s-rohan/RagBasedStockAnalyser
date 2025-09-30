@@ -32,7 +32,7 @@ class TestQueryWithIDF(unittest.TestCase):
         self.assertIsInstance(results, list)
         self.assertGreater(len(results), 0)
         print(f"Results for query 3: {results}")
-        
+       
 
 if __name__ == "__main__":
     unittest.main()
