@@ -12,7 +12,7 @@ This python project is to analyse Stocks based on various inpute sources and use
 ### Using Conda
 ```sh
 conda env create -f environment.yml
-conda activate fRagBasedStockAnalyser
+conda activate RagBasedStockAnalyser
 ```
 
 ### Using pip
