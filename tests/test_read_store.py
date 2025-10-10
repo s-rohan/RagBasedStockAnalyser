@@ -16,10 +16,10 @@ class TestReadStore(unittest.TestCase):
 
 
     def test_list_files_in_folder(self):
-        self.files = self.read_store.list_files_in_folder(self.test_folder, extension='.jsonl')
+        self.files = self.read_store.list_files_in_folder(self.test_folder, extension='.json1')
         self.assertTrue(len(self.files)>0)
         content = self.read_store.read_file(self.files[0], processor=dummy_processor)
-        self.assertEqual(len(content)>0)
+        self.assertTrue(len(content)>0)
 
 if __name__ == "__main__":
     unittest.main()

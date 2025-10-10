@@ -3,12 +3,12 @@ import logging
 from RagBasedStockAnalyser.equity.fetch.EmbeddingOrganizer import EmbeddingOrganizer
 import glob
 import os,json
-import RagBasedStockAnalyser.equity.storeData.ReadStore as ReadStore
+from  RagBasedStockAnalyser.equity.storeData.ReadStore import  ReadStore
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 class EarningCallPipleLine:
     def __init__(self):
         self.readStore=ReadStore()
-        self.reader = ReadStore.ReadStore()
+
         logging.info("EarningCallPipleLine initialized.")
     def read_and_store_from_earningcall(self,ticker: str, year: str, quater: str):
         """
@@ -19,9 +19,8 @@ class EarningCallPipleLine:
 
         pattern = f"{ticker}_{year}_{quater}"
         folder = "earningcall"
-        readStore=ReadStore.ReadStore()
         files =[
-                f for f in readStore.list_files_in_folder(folder)
+                f for f in self.readStore.list_files_in_folder(folder)
                  if pattern in os.path.basename(f)
                 ]
         logging.info(f"Files matched for pattern {pattern}: {files}")
@@ -32,7 +31,7 @@ class EarningCallPipleLine:
         for file_path in files:
             logging.info(f"Processing file: {file_path}")
             
-            blocks = readStore.read_file(file_path,processor=lambda x: json.loads(x))
+            blocks = self.readStore.read_file(file_path,processor=lambda x: json.loads(x))
             # Extract actual values from filename for store method
             fname = os.path.basename(file_path)
             parts = fname.replace('.jsonl', '').split('_')

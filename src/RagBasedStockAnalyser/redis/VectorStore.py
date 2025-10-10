@@ -8,7 +8,7 @@ import os
 from pydantic import BaseModel,field_validator
 from typing import Optional
 from dotenv import load_dotenv
-from functools import lru_cache
+from RagBasedStockAnalyser.redis.RedisCache import redis_cache,llm_redis_cache
 import json
 load_dotenv()
 class Document(BaseModel):
@@ -51,14 +51,19 @@ class LexicalDocuments(BaseModel):
 
 class VectorStore:
     def __init__(self, host: str = "host.docker.internal", port: int = 6379):
-        self.r = redis.Redis(host=host, port=port, decode_responses=False)
-    @lru_cache(maxsize=1000)
+        self.r = redis.StrictRedis(host=host, port=port, decode_responses=False)
+    
     def embed(self, text: str) -> np.ndarray:
-        response = openai.embeddings.create(
+        response = self.call_LLM(text)
+        return np.array(response.data[0].embedding, dtype=np.float32)
+    @llm_redis_cache()
+    def  call_LLM(self, text: str):
+         response = openai.embeddings.create(
             model="text-embedding-ada-002",
             input=text
         )
-        return np.array(response.data[0].embedding, dtype=np.float32)
+         return response
+         
     def storeLexicalData(self, store:LexicalDocuments):
         docs=store.documents
 

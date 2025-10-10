@@ -50,7 +50,7 @@ class BaseRedisMemoryAgent:
                 self.openai_model =kwargs.get("OPENAI_MODEL",os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
             self.ttl_seconds = int(os.getenv("REDIS_TTL_SECONDS", 3600))
             redis_username = os.getenv("REDIS_USERNAME","AppUser")
-            addSematicCaching=kwargs.get("Add_Sematic_Caching",True)
+            addSematicCaching=kwargs.get("Add_Sematic_Caching",False)
             redis_password
             try:
                 redis_url = os.getenv("REDIS_URL")
@@ -76,20 +76,22 @@ class BaseRedisMemoryAgent:
             
             embeddings = OpenAIEmbeddings()
             class VerboseSemanticCache(RedisSemanticCache):
+                def __init__(self, embeddings, distance_threshold = 0.2, prefix = "llmcache", redis_client = None):
+                    super().__init__(embeddings=embeddings, distance_threshold=distance_threshold, prefix=prefix, redis_client=redis_client)
                 def lookup(self, prompt: str, llm_string: str):
                     result = super().lookup(prompt, llm_string)
-                    print("🔁 Cache hit!" if result else "🆕 Cache miss.")
+                    print("Cache hit!" if result else "Cache miss.")
                     return result
             
             if addSematicCaching:
-                semantic_cache = RedisSemanticCache(
+                semantic_cache = VerboseSemanticCache(
                     embeddings=embeddings,
                     redis_client= self.r,
                     distance_threshold=0.2,
                     prefix='cache_openAI'
                 )
 
-                set_llm_cache(VerboseSemanticCache(semantic_cache))
+                set_llm_cache(semantic_cache)
             modelParam=kwargs.get("Model_Param",{"temperature":0.1})
             
           

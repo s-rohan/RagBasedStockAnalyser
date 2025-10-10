@@ -8,17 +8,34 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS,TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
 import re
-from functools import lru_cache
 from collections import defaultdict
-
+from abc import ABC, abstractmethod
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class QueryWithIDF:
-    def __init__(self, vector_store: VectorStore):
+class QueryWithIDF(ABC):
+    def __init__(self, vector_store: VectorStore ,**kwargs):
         logger.info("Initializing QueryWithIDF")
         self.vector_store = vector_store
-        self.runner = RedisQueryRunner(vector_store)
+
+        self.seamnticPrefix=self.get_semantic_prefix()
+        self.lexicalPrefix=self.get_lexical_prefix()
+        self.runner = self._getRedisQueryRunner(vector_store,self.getRedisIndex(self.get_semantic_prefix()))
+    
+    @abstractmethod
+    def getRedisIndex(self,prefix:str):
+        pass
+    @abstractmethod
+    def get_semantic_prefix(self):
+        pass
+    @abstractmethod
+    def get_lexical_prefix(self):
+        pass
+        
+
+
+    def _getRedisQueryRunner(self, vector_store,index:str=None):
+        return RedisQueryRunner(vector_store,index)
     def _get_idf_data(self,retrivedDocs:list[LexicalDocument]):
         logger.info(f"Entering _get_idf_data with {len(retrivedDocs)} documents.")
         doc_vectors = []
@@ -75,13 +92,21 @@ class QueryWithIDF:
             doc_name = doc.get('doc_name', '')
             doc_id = doc.get('id', '')
             ticker = year = quater = None
-            m = re.match(r"transcript_([A-Za-z0-9]+)_(\d{4})_([Qq][1-4])", doc_name)
+            year_pattern="\d{4}"
+            doc_name_pattern=fr"{self.seamnticPrefix}_([A-Za-z0-9]+)_({year_pattern})_([Qq][1-4])"
+            doc_id_pattern=fr"{self.seamnticPrefix}_([A-Za-z0-9]+)_({year_pattern})_([Qq][1-4])_"
+            m = re.match(doc_name_pattern, doc_name)
             if m:
                 ticker, year, quater = m.group(1), m.group(2), m.group(3)
             else:
-                m2 = re.match(r"transcript_([A-Za-z0-9]+)_(\d{4})_([Qq][1-4])_", doc_id)
+                m2 = re.match(doc_id_pattern, doc_id)
                 if m2:
                     ticker, year, quater = m2.group(1), m2.group(2), m2.group(3)
+                else :
+                    parts=doc_name_pattern.split("_")
+                    ticker, year, quater=parts[-1],parts[-2],parts[-3]
+
+
             key =(ticker, int(year), quater)
             ticker, year, quater =  key
               
@@ -120,8 +145,7 @@ class QueryWithIDF:
     def fetch_vector_results(self, query: str, top_k: int = 11) -> List[Dict[str, Any]]:
         logger.info(f"Fetching vector results for query: {query}, top_k: {top_k}")
         # Embed the query and use RedisQueryRunner to search
-        query_embedding = self.vector_store.embed(query)
-        results_dict = self.runner.run_query(query, query_embedding, top_k)
+        results_dict = self.executeVectorSearch(query, top_k)
         all_results = []
         idx =self.runner.index_a
         for doc in results_dict.get(idx, {}).get('results', []):
@@ -131,6 +155,17 @@ class QueryWithIDF:
             else:
                 all_results.append(doc)
         return all_results
+
+    def executeVectorSearch(self, query, top_k,return_feilds:list=None):
+        query_embedding = self.vector_store.embed(query)
+        if return_feilds is None:
+            return_feilds=self.getDefaultReturnFields()
+        results_dict = self.runner.run_query(query, query_embedding, top_k,return_feilds)
+        return results_dict
+    
+    @abstractmethod
+    def getDefaultReturnFields(self):...
+  
     
     #@lru_cache(maxsize=None)
     def fetch_lexical_for_doc(self, ticker: str, year: int, quater: str) -> LexicalDocuments:
@@ -140,7 +175,7 @@ class QueryWithIDF:
         y = year if year is not None else '*'
         q = quater if quater is not None else '*'
         idf_key = f"{t}_{y}_{q}"
-        lexical_docs: LexicalDocuments = self.vector_store.retriveLexicalData(f"lexical_{idf_key}_*", f"{idf_key}")
+        lexical_docs: LexicalDocuments = self.vector_store.retriveLexicalData(f"{self.lexicalPrefix}_{idf_key}_*", f"{idf_key}")
         return lexical_docs
     def normalize(self, scores: dict) -> dict:
         logger.info(f"Normalizing scores for {len(scores)} items.")
@@ -176,8 +211,8 @@ class QueryWithIDF:
         id_to_res = {str(res.get('id')): res["content"] for res in vector_results}
         merged = []
         for doc_id in sorted(hybrid_scores, key=lambda x: hybrid_scores[x], reverse=True)[:top_k]:
-            transcript_id=f'transcript_{"_".join(str(k) for k in key)}_{doc_id}'
-            lexical_id=f'lexical_{"_".join(str(k) for k in key)}_{doc_id}'
+            transcript_id=f'{self.seamnticPrefix}_{"_".join(str(k) for k in key)}_{doc_id}'
+            lexical_id=f'{self.lexicalPrefix}_{"_".join(str(k) for k in key)}_{doc_id}'
             if transcript_id in id_to_res:
                 res = id_to_res[transcript_id]
             elif lexical_id in doc_map:
@@ -190,5 +225,32 @@ class QueryWithIDF:
             #orig_score = semantic_scores.get(doc_id, lexical_scores.get(doc_id, 0))
             merged.append(res)
         return merged
+
+class TranscriptQueryWithIDF(QueryWithIDF):
+    def __init__(self, vector_store: VectorStore ,**kwargs):
+      super().__init__(vector_store,**kwargs)
+
+    def getDefaultReturnFields(self):
+        return ["content", "doc_name", "chunk_id", "score", "id", "embedding"]
+    def getRedisIndex(self,prefix:str):
+        return "transcript_idx"
+    def get_semantic_prefix(self):
+        return "transcript"
+    def get_lexical_prefix(self):
+        return "lexical"
+
+class ReportQueryWithIDF(QueryWithIDF):
+    def __init__(self, vector_store: VectorStore ,**kwargs):
+      super().__init__(vector_store,**kwargs)
+
+    def getDefaultReturnFields(self):
+        return ["ALL"]
+    def getRedisIndex(self,prefix:str):
+        return "report_idx"
+    def get_semantic_prefix(self):
+        return "report"
+    def get_lexical_prefix(self):
+        return "lexical_report"
+
 
 

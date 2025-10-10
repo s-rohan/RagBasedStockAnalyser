@@ -9,6 +9,7 @@ import os
 import json
 import re
 import logging
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,14 +17,9 @@ logger = logging.getLogger(__name__)
 class PDFSemanticChunker:
     def __init__(self, breakpoint_threshold_amount=0.75):
         logger.info(f"Initializing PDFSemanticChunker with breakpoint_threshold_amount={breakpoint_threshold_amount}")
-        self.embeddings = OpenAIEmbeddings()
-        self.chunker = SemanticChunker(
-            self.embeddings,
-            add_start_index=True,
-            breakpoint_threshold_type="percentile",
-            breakpoint_threshold_amount=breakpoint_threshold_amount
-        )
-
+        self.embOrganizer=embOrganizer(lexical_prefix="lexical_report",semantic_prefix="lexical_report")
+        self.breakpoint_threshhold_amount=breakpoint_threshold_amount
+    
     def extract(self, page, page_number: int) -> List[Dict]:
         logger.info(f"Extracting page {page_number}")
         data_blocks = []
@@ -65,7 +61,8 @@ class PDFSemanticChunker:
                     for i, page in enumerate(pdf.pages):
                         blocks = self.extract(page, page_number=i + 1)
                         for block in blocks:
-                            chunks_with_meta.extend(self.parseExtractBlock(file_id, block))
+                            initial_len=len(chunks_with_meta)
+                            chunks_with_meta.extend(self.parseExtractBlock(file_id, block,initial_len))
                 logger.info(f"Chunked {len(chunks_with_meta)} blocks from PDF: {pdf_path}")
             except Exception as e:
                 logger.error(f"Error chunking PDF {pdf_path}: {e}")
@@ -74,15 +71,15 @@ class PDFSemanticChunker:
             logger.warning(f"File not found: {pdf_path}")
         return chunks_with_meta
 
-    def parseExtractBlock(self, file_id, block) -> List[Dict]:
+    def parseExtractBlock(self, file_id, block,increment_padding:int=0) -> List[Dict]:
         logger.info(f"Parsing block for file_id: {file_id}, page: {block.get('page_number')}")
         chunks_with_meta = []
         heading = self._extract_heading(block["content"])
-        chunks = self.chunker.split_text(block["content"])
+        chunks = self.embOrganizer.getSemanticChunks(block["content"],self.breakpoint_threshhold_amount)
         for idx, chunk in enumerate(chunks):
             chunks_with_meta.append({
                 "chunk": chunk,
-                "chunk_index": idx,
+                "chunk_index": f"{increment_padding+idx}",
                 "page_number": block["page_number"],
                 "block_type": block["type"],
                 "heading": heading,
@@ -108,7 +105,7 @@ class PDFSemanticChunker:
         logger.info(f"Storing PDF chunks for file_id: {file_id} from PDF: {pdf_path}")
         chunks = self.chunk_pdf(pdf_path, file_id)
         path =self.store_chunks(chunks, file_id, folder_path)
-        logger.info(f"PDF chunks stored for file_id: {file_id}")
+        logger.info(f"PDF chunks stored  at {path}")
         return path
     def loadPdfChunkstoRedis(self, folder_path: str, file_id: str) -> bool:
         logger.info(f"Loading PDF chunks to Redis for file_id: {file_id} from folder: {folder_path}")
@@ -125,7 +122,10 @@ class PDFSemanticChunker:
             logger.info(f"Processing chunk file: {file_path}")
             blocks = readStore.read_file(file_path, processor=lambda x: json.loads(x))
             parts = re.split(r'[_.]', file_id)
-            boo = org.storeReportsData(blocks, parts[0], int(parts[1]), parts[2])
+            chunks=[p for p in blocks if len(p.get("chunk"))>5]
+            boo = asyncio.run(
+                org.storeReportsData(chunks, parts[0], int(parts[1]), parts[2])
+            )
 
             logger.info(f"Stored chunks from {file_path} to Redis: {boo}")
         logger.info(f"All chunks loaded to Redis for file_id: {file_id}")

@@ -10,12 +10,12 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-from BaseRedisMemoryAgent import BaseRedisMemoryAgent
+from .BaseRedisMemoryAgent import BaseRedisMemoryAgent
 # Load environment variables from .env file
 load_dotenv()
 
 class BasicQueryAgent(BaseRedisMemoryAgent):
-    def __init__(self,systemPrompt:str,**kwargs):
+    def __init__(self,systemPrompt:ChatPromptTemplate|str|dict,**kwargs):
         # Load config from environment variables
         super().__init__(**kwargs)
         
@@ -36,7 +36,7 @@ class BasicQueryAgent(BaseRedisMemoryAgent):
             input_messages_key="query",
             history_messages_key="history",
         )
-    async def call(self, query: str, session_id: str = "user1"):
+    async def call(self, query: str, session_id: str = "user1")->dict:
         result = await self.runnableWithHistory.ainvoke(
             {"query": query},
             config={"configurable": {"session_id": session_id},"callbacks": [self.tracer]}
@@ -46,19 +46,4 @@ class BasicQueryAgent(BaseRedisMemoryAgent):
             return {"response": result.content}
         return {"response": str(result)}
 
-    
-
-# FastAPI app
-app = FastAPI()
-agent = BasicQueryAgent()
-
-
-
-@app.get("/chat")
-async def chat_endpoint(query:str,session_id:int):
-    response = await agent.call(query=query,session_id=session_id)
-    return JSONResponse(content=response)
-
-if __name__ == "__main__":
-    uvicorn.run("BasicQueryAgent:app", host="0.0.0.0", port=8000, reload=True)
 

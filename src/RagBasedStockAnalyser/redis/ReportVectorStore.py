@@ -31,7 +31,7 @@ class ReportDoc(BaseModel):
             "arbitrary_types_allowed": True
         }
 class ReportVectorStore(VectorStore):
-    def storeReports(self, docs: list[ReportDoc]):
+    def storeReports(self, docs: list[ReportDoc]) -> bool:
         for doc in docs:
             embedding = self.embed(doc.content).tobytes()
             self.r.hset(doc.id, mapping={
@@ -44,6 +44,7 @@ class ReportVectorStore(VectorStore):
                 "page_no":doc.page_no,
                 "content_type":doc.content_type
             })
+        return True
             
     def retrieveReport(self, doc_id: str) -> ReportDoc:
         raw_fields = self.r.hgetall(doc_id)

@@ -10,11 +10,17 @@ import json
 import logging
 import collections
 import numpy as np
+from RagBasedStockAnalyser.redis.RedisCache import redis_cache
 
 # Configure logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 class EmbeddingOrganizer:
+    def __init__(self,**kargs):
+        self.lexical_prefix=kargs.get("lexical_prefix","lexical")
+        self.semantic_prefix=kargs.get("semantic_prefix","transcript")
+
+        pass
     logger = logging.getLogger(__name__)
 # Preprocess function
     @staticmethod
@@ -27,6 +33,7 @@ class EmbeddingOrganizer:
         logging.debug(f"Preprocessed result: {result[:30]}...")
         return result
     @staticmethod
+    @redis_cache()
     def getSemanticChunks(text: str,breakpoint_threshold_amount:float=.75) -> List[str]:
         logging.info(f"Splitting text into semantic chunks (threshold={breakpoint_threshold_amount})")
         embeddings = OpenAIEmbeddings()
@@ -51,14 +58,12 @@ class EmbeddingOrganizer:
         quater=kargs.get("quater")
         year=int(kargs.get("year"))
         ticker=kargs.get("ticker")
-        doc_name=kargs.get("doc_name",self.formatDefault(quater, year, ticker))
-        id_parts=kargs.get("lexical_id_docs",collections.defaultdict(list))
+        doc_name=kargs.get("doc_name",self.formatDefault(quater=quater, year=year, ticker=ticker))
 
         vectorizer = TfidfVectorizer()
         matrix = vectorizer.fit_transform(allDocs)
         features = vectorizer.get_feature_names_out()
         idf_scores = dict(zip(features, vectorizer.idf_))
-        #idf_score=json.dumps(idf_scores)
 
         storedDocs = []
 
@@ -69,8 +74,9 @@ class EmbeddingOrganizer:
                 for j in range(len(row))
                 if row[j] > 0
             }
+            id_parts=kargs.get("lexical_id_docs",collections.defaultdict(list))
             if len(id_parts)==0:
-                id_parts = ["lexical",ticker,year,quater,i]
+                id_parts = [self.lexical_prefix,ticker,year,quater,i]
             else:
                 id_parts.append(i)
             doc = LexicalDocument(
@@ -100,13 +106,15 @@ class EmbeddingOrganizer:
     
         
     def get_lex_alldocs_id(self, quater:str, year:int|str, ticker:str,doc_type="idfscore"):
-        return self.formatDefault(quater, year, ticker,doc_type=doc_type)
+        return self.formatDefault(quater=quater, year=year, ticker=ticker,doc_type=doc_type)
     
-    def create_lexical_doc_id(self, params:list[str|int],sperator:str="_" ):
-        return sperator.join(f"{p}" for p in params)
+    def create_lexical_doc_id(self, params:list[str|int],seperator:str="_" ):
+        return seperator.join(f"{p}" for p in params)
 
-    def formatDefault(self, quater:str, year:int|str, ticker:str,doc_type="transcript"):
-        return f"{doc_type}_{ticker}_{quater}_{year}"
+    def formatDefault(self, quater:str, year:int|str, ticker:str,doc_type:str=None):
+        if not doc_type:
+            doc_type=self.semantic_prefix
+        return f"{doc_type}_{ticker}_{year}_{quater}"
 
     def store(self,blocks:list,ticker:str,year:int,quater:str):
         '''Stores the given blocks of text into the VectorStore with embeddings and lexical data.'''
@@ -115,21 +123,23 @@ class EmbeddingOrganizer:
         cleaned_docs = []
         vs = VectorStore()
         i = 0
+        doc_name = f"{self.semantic_prefix}_{ticker}_{year}_{quater}"
         for b in blocks:
             ls = []
             for c in self.getSemanticChunks(b['text'].replace("\n", ""), .95):
                 d = {}
-                d["id"] = f"transcript_{ticker}_{year}_{quater}_{i}"
+                d["id"] = f"{self.semantic_prefix}_{ticker}_{year}_{quater}_{i}"
                 d["content"] = c
                 d["year"] = year
-                d["doc_name"] = f"transcript_{ticker}_{year}_{quater}"
+                
+                d["doc_name"] = doc_name
                 d["chunk_id"] = i
                 d["speaker"] = b['speaker']
                 ls.append(Document(**d))
                 i += 1
                 cleaned_docs.append(self.preprocess(f'{b["speaker"]}:{c}'))
             vs.store(ls)
-        self.storeLexicalData(cleaned_docs, quater=quater, year=year, ticker=ticker)
+        self.storeLexicalData(cleaned_docs, quater=quater, year=year, ticker=ticker,doc_name=doc_name)
         logging.info(f"EmbeddingOrganizer.store completed.{len(blocks)} blocks processed.")
 
    
