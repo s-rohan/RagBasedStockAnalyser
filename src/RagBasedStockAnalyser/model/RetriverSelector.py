@@ -4,8 +4,8 @@ from RagBasedStockAnalyser.equity.fetch.QueryWithIDF import TranscriptQueryWithI
 from langchain_core.prompts import ChatPromptTemplate
 import re
 import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(log_to_file=False, level=logging.INFO)
 class RetriverSelector(BaseRedisMemoryAgent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs) 

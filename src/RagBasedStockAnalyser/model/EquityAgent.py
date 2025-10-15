@@ -13,6 +13,8 @@ import asyncio
 from langgraph.graph.message import MessagesState, add_messages
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(log_to_file=False, level=logging.INFO)
 class EquityAgent(BaseRedisMemoryAgent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

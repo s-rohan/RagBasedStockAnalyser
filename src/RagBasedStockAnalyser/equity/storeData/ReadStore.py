@@ -1,9 +1,7 @@
 import os
-import logging
 from typing import List
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging()
 
 class ReadStore:
     def __init__(self, data_dir=None):

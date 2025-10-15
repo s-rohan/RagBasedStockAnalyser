@@ -6,12 +6,11 @@ import json
 from itertools import chain
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS,TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import logging
 import re
 from collections import defaultdict
 from abc import ABC, abstractmethod
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging()
 
 class QueryWithIDF(ABC):
     def __init__(self, vector_store: VectorStore ,**kwargs):

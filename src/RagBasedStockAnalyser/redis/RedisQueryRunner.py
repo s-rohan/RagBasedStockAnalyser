@@ -7,9 +7,10 @@ from pydantic import BaseModel, field_validator
 from RagBasedStockAnalyser.redis.VectorStore import VectorStore
 import logging
 from  typing import List
+from RagBasedStockAnalyser.common.logging_config import setup_logging
 
-# Configure logger
-logging.basicConfig(level=logging.INFO)
+
+logger = setup_logging(log_to_file=False, level=logging.INFO)
 logger = logging.getLogger(__name__)
 class StoredDocument(BaseModel):
     content:Optional[str]=None
