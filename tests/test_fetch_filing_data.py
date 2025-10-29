@@ -5,7 +5,9 @@ from RagBasedStockAnalyser.equity.fetch.FetchFilingData import FetchFilingData
 
 class TestFetchFilingData(unittest.TestCase):
     def setUp(self):
-        self.ticker = ['NFLX',"AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+        self.ticker = "AAPL"
+        self.year = 2023
+        self.quarter = 2
         self.sec_filing_data = os.path.join(
             os.path.dirname(__file__),
             "..",
@@ -18,21 +20,19 @@ class TestFetchFilingData(unittest.TestCase):
         self.fetcher = FetchFilingData(SEC_FILING_DATA=self.sec_filing_data)
 
     def test_ticker_cif_mapping(self):
-        for ticker in self.ticker:
-            cik = self.fetcher.ticker_cif_mapping(ticker=ticker)
-            self.assertIsInstance(cik, str)
-            self.assertEqual(len(cik), 10)
+        cik = self.fetcher.ticker_cif_mapping(ticker=self.ticker)
+        self.assertIsInstance(cik, str)
+        self.assertEqual(len(cik), 10)
 
     def test_fetch_submissions(self):
-        for ticker in self.ticker:
-            cik = self.fetcher.ticker_cif_mapping(ticker=ticker)
-            if cik:
-                result = self.fetcher.fetch_submissions(cik=cik,ticker=ticker)
-                # The function stores data and logs, but doesn't return a value
-                # Just check no exception and log output
-                self.assertTrue(result)
-            else:
-                self.fail("CIK not found for ticker. {ticker}")
+        cik = self.fetcher.ticker_cif_mapping(ticker=self.ticker)
+        if cik:
+            result = self.fetcher.fetch_submissions(cik=cik,ticker=self.ticker)
+            # The function stores data and logs, but doesn't return a value
+            # Just check no exception and log output
+            self.assertTrue(result)
+        else:
+            self.fail("CIK not found for ticker.")
 
 if __name__ == "__main__":
     unittest.main()

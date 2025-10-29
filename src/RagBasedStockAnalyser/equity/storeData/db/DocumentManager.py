@@ -3,7 +3,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 import pandas as pd
-from typing import Callable, List, Any
+from typing import Callable, List, Union, Dict, Any
 import atexit
 load_dotenv()
 from RagBasedStockAnalyser.common.logging_config import setup_logging
@@ -67,33 +67,44 @@ class DocumentManager:
             logger.exception(f"Error inserting document into {repo}: {e}")
             return False
     
-    def query_and_parse( self,
+    def query_and_parse(
+    self,
     collection_name: str,
-    query: dict,
-    parser: Callable[[dict], Any],
-    limit: int = 0
+    query: Union[Dict, List[Dict]],
+    parser: Callable[[dict], Any] = None,
+    limit: int = 100,
+    use_aggregation: bool = False
 ) -> List[Any]:
         """
-        Connects to MongoDB, runs a query on the specified collection,
+        Connects to MongoDB, runs a find or aggregate query on the specified collection,
         and applies a parser function to each result.
 
         Args:
             collection_name: Name of the collection
-            query: MongoDB query dict
+            query: MongoDB query dict (for find) or list of pipeline stages (for aggregate)
             parser: Function to parse each document
-            limit: Max number of documents to return .Zero is no limit
+            limit: Max number of documents to return (0 = no limit)
+            use_aggregation: If True, runs aggregation pipeline instead of find
 
         Returns:
             List of parsed documents
         """
-        
         collection = self._client.get_collection(collection_name)
 
-        cursor = collection.find(query).limit(limit)
-        if parser is None:
+        if use_aggregation:
+            pipeline = query if isinstance(query, list) else [query]
+            if limit > 0:
+                pipeline.append({"$limit": limit})
+            cursor = collection.aggregate(pipeline)
+        else:
+            cursor = collection.find(query)
+            if limit > 0:
+                cursor = cursor.limit(limit)
+
+        if parser:
             return [parser(doc) for doc in cursor]
         else:
-            return [doc for doc in cursor]
+            return list(cursor)
 
 from threading import Lock
 

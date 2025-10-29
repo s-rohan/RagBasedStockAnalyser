@@ -1,20 +1,15 @@
 import requests
-from datetime import datetime,timezone
-from typing import Optional
+from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
 import json,time
 import pandas as pd
 from pydantic import BaseModel, field_validator
-from typing import List
 from RagBasedStockAnalyser.common.logging_config import setup_logging
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from bs4 import BeautifulSoup
 from RagBasedStockAnalyser.equity.storeData.db.DocumentManager import DocumentManager
-from collections import defaultdict
-from playwright.sync_api import sync_playwright
 load_dotenv()
 logger = setup_logging(logger_name=__name__)
 class TickerEntry(BaseModel):
@@ -25,26 +20,6 @@ class TickerEntry(BaseModel):
     @classmethod
     def coerce_cik(cls, v):
         return str(v)
-
-class FilingChunk(BaseModel):
-    chunk_id: str
-    accession_number: str
-    CIK_number: str
-    filing_date: datetime
-    fiscal_year: int
-    fiscal_quarter: str
-    content: str
-    source_url: str
-
-class FilingMetadata(BaseModel):
-    CIK_number: str
-    accession_number: str
-    filing_date: datetime
-    form_type: str
-    fiscal_year: int
-    fiscal_quarter: str
-    source_url: str
-    chunk_count: int
     
 class FetchFilingData():
     def __init__(self,**kargs):
@@ -53,7 +28,7 @@ class FetchFilingData():
         self.doc_db=DocumentManager()
      
     def ticker_cif_mapping(self,ticker:str)->str:
-       return self._ticker_cif_mapping.get(ticker).cik_str.zfill(10)
+       return self._ticker_cif_mapping.get(ticker).cik_str.zfill(10) #return CIK as zero-padded 10-digit string
    
     def load_ticker_data(self,filepath: str) -> dict[str:TickerEntry]:
         """Loads and validates SEC ticker data from a local JSON file."""
@@ -87,16 +62,8 @@ class FetchFilingData():
         data = self.get_sec_content(url).json()
         fy_metrics = self.extract_fy_metrics(data,cik=cik)
         ret=self.doc_db.store_company_facts_data(df=fy_metrics, repo="company_facts")
+        logger.info(f"Stored {ret} company facts data for CIK: {cik}, Ticker: {ticker} into the database.")
         return ret
-    
-    def print_fy_metrics(self,fy_data: pd.DataFrame):
-        logger.info(f"{'Fiscal Year':<12} {'Net Income':>15} {'Assets':>15} {'Liabilities':>15}")
-        for _, row in fy_data.sort_values(by="fy", ascending=False).iterrows():
-            fy = row["fy"]
-            ni = row.get("NetIncomeLoss", 0)
-            assets = row.get("Assets", 0)
-            liabilities = row.get("Liabilities", 0)
-            logger.info(f"{fy:<12} {ni:>15,.2f} {assets:>15,.2f} {liabilities:>15,.2f}")
         
     def derive_fiscal_tags(self,filing_date: datetime) -> tuple:
         ''' Takes foling date and returns the year and quarter'''
@@ -110,21 +77,6 @@ class FetchFilingData():
         )
         return year, quarter
 
-    def chunk_html_content(self,html: str, max_chars: int = 50000) -> List[str]:
-        soup = BeautifulSoup(html, "html.parser")
-        text = soup.get_text(separator="\n")
-        paragraphs = text.split("\n")
-        
-        chunks, current = [], ""
-        for para in paragraphs:
-            if len(current) + len(para) < max_chars:
-                current += para + "\n"
-            else:
-                chunks.append(current.strip())
-                current = para + "\n"
-        if current:
-            chunks.append(current.strip())
-        return chunks
         
 
     def extract_fy_metrics(self,data: dict,cik:str, concepts: list = None)->pd.DataFrame:
