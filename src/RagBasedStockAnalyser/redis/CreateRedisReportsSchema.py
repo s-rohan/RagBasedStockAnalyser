@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 # Initialize Redis client
 r = redis.Redis(host="host.docker.internal", port=6379, decode_responses=False)
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 
 # Set your OpenAI API key
 #openai.api_key =  os.getenv("OPENAI_API_KEY")
@@ -22,9 +24,9 @@ def embed(text):
 
 
 try:
-    print(r.ping())  # Should return True
+    logger.info(r.ping())  # Should return True
 except Exception as e:
-    print(f"Connection failed: {e}")
+    logger.exception(f"Connection failed: {e}")
 
 
 
@@ -58,7 +60,7 @@ def create_redis_reports_schema():
         definition=IndexDefinition(prefix=["report_"], index_type=IndexType.HASH)
     )
     
-    print("Redis vector index created.")
+    logger.info("Redis vector index created.")
 
 
 if __name__ == "__main__":

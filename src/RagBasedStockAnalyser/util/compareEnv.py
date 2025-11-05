@@ -1,5 +1,7 @@
 import yaml
 from subprocess import run, PIPE
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 
 # Load environment.yml
 with open("environment.yml") as f:
@@ -27,5 +29,5 @@ installed = set(line.split()[0].lower() for line in result.stdout.splitlines() i
 missing = declared - installed
 extra = installed - declared
 
-print("Missing from env:", missing)
-print("Extra in current:", extra)
+logger.info("Missing from env: %s", missing)
+logger.info("Extra in current: %s", extra)

@@ -11,6 +11,8 @@ from langchain_core.messages import BaseMessage
 from langchain.schema import Generation
 from langchain_openai import OpenAI, OpenAIEmbeddings
 from langchain_redis import RedisCache, RedisSemanticCache
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 
 
 # Load environment variables from .env file
@@ -68,9 +70,9 @@ class BaseRedisMemoryAgent:
 
                     self.r = redis.Redis(connection_pool=pool)
                 self.r.ping()  # Test the connection
-                print("Connected to Redis successfully!")
+                logger.info("Connected to Redis successfully!")
             except redis.exceptions.ConnectionError as e:
-                print(f"Failed to connect to Redis: {e}")
+                logger.error(f"Failed to connect to Redis: {e}")
                 raise
 
             
@@ -80,7 +82,7 @@ class BaseRedisMemoryAgent:
                     super().__init__(embeddings=embeddings, distance_threshold=distance_threshold, prefix=prefix, redis_client=redis_client)
                 def lookup(self, prompt: str, llm_string: str):
                     result = super().lookup(prompt, llm_string)
-                    print("Cache hit!" if result else "Cache miss.")
+                    logger.info("Cache hit!" if result else "Cache miss.")
                     return result
             
             if addSematicCaching:
@@ -103,7 +105,7 @@ class BaseRedisMemoryAgent:
 
             )
         except ValueError:
-            print(ValueError)
+            logger.exception(ValueError)
 
 
     

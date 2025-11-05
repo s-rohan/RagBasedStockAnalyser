@@ -14,6 +14,8 @@ from openevals.prompts import RAG_GROUNDEDNESS_PROMPT,CONCISENESS_PROMPT,CORRECT
 # Load environment variables from .env file
 
 load_dotenv()
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 
 class RagEvaluators(abc.ABC):
     def __init__(self, **kwargs):
@@ -35,7 +37,7 @@ class RagEvaluators(abc.ABC):
             if run.status == "success" and "answer" in run.outputs:
                 eval_result = self.eval(run)
                 if eval_result: # Ensure eval_result is not None
-                    print(f"Run ID: {run.id} - Eval Result: {eval_result}")
+                    logger.info(f"Run ID: {run.id} - Eval Result: {eval_result}")
                     results[run.id]=eval_result
         
         return results

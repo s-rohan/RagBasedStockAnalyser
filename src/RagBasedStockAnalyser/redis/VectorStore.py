@@ -9,6 +9,8 @@ from pydantic import BaseModel,field_validator
 from typing import Optional
 from dotenv import load_dotenv
 from RagBasedStockAnalyser.redis.RedisCache import redis_cache,llm_redis_cache
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 import json
 load_dotenv()
 class Document(BaseModel):
@@ -142,7 +144,7 @@ class VectorStore:
 
         raw_embedding = self.r.hget(doc_id, "embedding")
         if raw_embedding is None and "lexical" not in doc_id:
-            print(f"{raw_fields} raw feilds")
+            logger.error("%s raw fields", raw_fields)
             raise ValueError(f"Missing 'embedding' for doc_id: {doc_id}")
 
         fields["embedding"] = np.frombuffer(raw_embedding, dtype=np.float32)

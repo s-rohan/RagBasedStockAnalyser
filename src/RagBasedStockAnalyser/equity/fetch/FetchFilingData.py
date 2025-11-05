@@ -164,6 +164,6 @@ class FetchFilingData():
 
         response = session.get(url, headers=headers)
         if response.status_code != 200:
-            print(f"Failed to fetch submissions for CIK: {url} → {response.status_code}")
+            logger.error(f"Failed to fetch submissions for CIK: {url} → {response.status_code}")
             return None
         return response

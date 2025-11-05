@@ -2,6 +2,8 @@ import redis
 import time
 import hashlib
 import pickle
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 
 # Connect to the Redis server
 redis_client = redis.StrictRedis(host="host.docker.internal", port=6379,db=0, decode_responses=True)
@@ -20,10 +22,10 @@ def redis_cache(ttl=0):
             # Check if the result is already cached
             cached_result = redis_client.get(key)
             if cached_result:
-                print("Cache hit!")
+                logger.info("Cache hit!")
                 return eval(cached_result)  # Convert the string back to a Python object
             
-            print("Cache miss. Computing result...")
+            logger.info("Cache miss. Computing result...")
             # Compute the result and cache it
             result = func(*args, **kwargs)
             if ttl>0:
@@ -47,10 +49,10 @@ def llm_redis_cache(ttl=0):
             # Check if the result is already cached
             cached_result = redis_client_binary.get(key)
             if cached_result:
-                print("Cache hit!")
+                logger.info("Cache hit!")
                 return pickle.loads(cached_result)  # Convert the string back to a Python object
             
-            print("Cache miss. Computing result...")
+            logger.info("Cache miss. Computing result...")
             # Compute the result and cache it
             result = func(*args, **kwargs)
             if ttl>0:

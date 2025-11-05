@@ -1,5 +1,7 @@
 import redis
 r = redis.Redis(host="host.docker.internal", port=6379, decode_responses=False)
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 # Scan for keys matching the pattern
 def update_keys(oldKey:str="*_AAPL_*.json1_*"):
     for old_key in r.scan_iter("*_AAPL_*.json1_*"):
@@ -9,7 +11,7 @@ def update_keys(oldKey:str="*_AAPL_*.json1_*"):
         
         # Rename the key
         r.rename(old_key_str, new_key)
-        print(f"Renamed: {old_key_str} → {new_key}")
+        logger.info(f"Renamed: {old_key_str} → {new_key}")
 
 def update_feild(field_to_update:str,new_value_str:str):
     cursor = 0

@@ -13,6 +13,8 @@ from requests.exceptions import Timeout, ReadTimeout, ConnectTimeout
 import socket
 import time
 import urllib3
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 
 
 class TranscriptParser:
@@ -61,7 +63,7 @@ class TranscriptParser:
                 driver.get(url)
                 return True
             except(ConnectionResetError, socket.error, WebDriverException,Timeout, ReadTimeout,ConnectTimeout) as e:
-                print(f"[Attempt {attempt+1}] Connection reset: {e}")
+                logger.warning(f"[Attempt {attempt+1}] Connection reset: {e}")
                 time.sleep(delay)
                 return True
         return False  # All attempts failed
@@ -90,10 +92,10 @@ class TranscriptParser:
         driver = uc.Chrome(options=options, headless=False, use_subprocess=True)
         if self.safe_get(driver, self.url):
             self.soup = BeautifulSoup(driver.page_source, "html.parser")
-            print("Page loaded successfully.")
+            logger.info("Page loaded successfully.")
     # Proceed with parsing
         else:
-            print("Failed to load page after retries. Proceeding with fallback logic.")
+            logger.error("Failed to load page after retries. Proceeding with fallback logic.")
             
         driver.quit()
 

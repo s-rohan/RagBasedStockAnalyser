@@ -3,9 +3,12 @@ import numpy as np
 import openai
 from redis.commands.search.field import TextField, TagField, VectorField
 
+# use centralized logging
 from redis.commands.search.index_definition  import IndexDefinition, IndexType
 from dotenv import load_dotenv
 load_dotenv()
+from RagBasedStockAnalyser.common.logging_config import setup_logging
+logger = setup_logging(logger_name=__name__)
 # Initialize Redis client
 r = redis.Redis(host="host.docker.internal", port=6379, decode_responses=False)
 
@@ -22,9 +25,9 @@ def embed(text):
 
 
 try:
-    print(r.ping())  # Should return True
+    logger.info(r.ping())  # Should return True
 except Exception as e:
-    print(f"Connection failed: {e}")
+    logger.exception(f"Connection failed: {e}")
 
 
 
@@ -67,7 +70,7 @@ def create_redis_indexes():
     )
     r.ft("idf_lexical_idx").create_index(fields=schema_idf, definition=IndexDefinition(prefix=["lexical_"], index_type=IndexType.HASH))
     r.ft("idfscore_lexical_idx").create_index(fields=schema_idf, definition=IndexDefinition(prefix=["idfscore_"], index_type=IndexType.HASH))
-    print("Redis vector index created.")
+    logger.info("Redis vector index created.")
 
 
 if __name__ == "__main__":
