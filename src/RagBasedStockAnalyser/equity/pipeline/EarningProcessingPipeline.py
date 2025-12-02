@@ -1,6 +1,7 @@
 import os, sys
 from RagBasedStockAnalyser.equity.fetch.FetchFilingData import FetchFilingData
 from RagBasedStockAnalyser.equity.storeData.db.DocumentManager import DocumentManager
+from RagBasedStockAnalyser.equity.storeData.S3Store import S3Store   
 import pandas as pd
 from RagBasedStockAnalyser.common.logging_config import setup_logging
 from typing import Tuple
@@ -13,11 +14,10 @@ class EarningProcessingPipeline:
             sec_filing_data: Path to the JSON file containing SEC ticker metadata.
             ticker: Optional list of tickers to process. If omitted, a default list is used.
         """
-        if ticker is None:
-            ticker = ['NFLX', "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
         self.ticker = ticker
         self.fetcher = FetchFilingData(SEC_FILING_DATA=sec_filing_data)
         self.db = DocumentManager()
+        self.s3=S3Store(bucket_name="earnings") 
 
     def process_earnings(self):
         """Primary pipeline entry point.
@@ -34,7 +34,12 @@ class EarningProcessingPipeline:
         data = self._drop_empty_concept_rows(data, concepts)
         data,derived_concepts = self._add_lagged_features(data, concepts)
         data = self._complete_incomplete_lags(data, derived_concepts)
+        fileName="processed_earnings_"+"_".join(self.ticker)+".csv"
+        data.to_csv(fileName,index=False)
+        loaded=self.s3.upload_file(file_path=fileName,object_name=fileName)
+        logger.info(f"Uploaded processed earnings {fileName}to S3: {loaded}")
         return data
+    
 
     def _getDataFromDB(self, cik: list, concepts: list) -> pd.DataFrame:
         """Query the document DB for company facts and aggregate requested concepts.
